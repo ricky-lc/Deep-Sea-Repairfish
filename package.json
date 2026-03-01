@@ -1,0 +1,11 @@
+{
+  "name": "deep-sea-repairfish",
+  "version": "1.0.0",
+  "description": "Repair submerged cables in the deep ocean while evading predators.",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["game", "canvas", "deep-sea", "pwa"],
+  "license": "MIT"
+}

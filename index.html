@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'" />
+  <meta name="referrer" content="no-referrer" />
+  <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()" />
+  <meta name="description" content="Repair submerged cables in the deep ocean while evading predators. Story mode, local multiplayer, hunt phase." />
+  <meta name="theme-color" content="#00aaff" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Reparefish" />
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Deep-sea Reparefish</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-wrapper">
+    <canvas id="game-canvas"></canvas>
+
+    <!-- ── HUD ─────────────────────────────────────────────────────────── -->
+    <div id="hud">
+      <div class="hud-block">
+        <span class="hud-label">CABLES</span>
+        <span id="cables-count" class="hud-value">0 / 6</span>
+      </div>
+      <div class="hud-block">
+        <span class="hud-label">TIME</span>
+        <span id="time-val" class="hud-value">0:00</span>
+      </div>
+      <div class="hud-block">
+        <span class="hud-label">HP</span>
+        <span id="hp-val" class="hud-value">❤ ❤</span>
+      </div>
+      <div class="hud-block" id="hud-sprint-block">
+        <span class="hud-label">SPRINT</span>
+        <span id="sprint-val" class="hud-value" style="color:#ffcc00">READY</span>
+      </div>
+      <div class="hud-block" id="hud-p2-sprint-block" style="display:none">
+        <span class="hud-label">P2 SPRINT</span>
+        <span id="hud-p2-sprint-val" class="hud-value" style="color:#ffaa00">READY</span>
+      </div>
+      <div class="hud-block" id="hud-mama-block" style="display:none">
+        <span class="hud-label">MAMA FISH</span>
+        <span id="mama-val" class="hud-value" style="color:#66ccff">READY</span>
+      </div>
+      <div class="hud-block" id="hud-name-block">
+        <span class="hud-label">FISH</span>
+        <span id="hud-fish-name" class="hud-value" style="color:#88ddaa"></span>
+      </div>
+      <div class="hud-block" id="hud-depth-block">
+        <span class="hud-label">DEPTH</span>
+        <span id="depth-val" class="hud-value" style="color:#55ddcc">-6000m</span>
+      </div>
+      <div class="hud-block" id="hud-objective-block">
+        <span class="hud-label">OBJECTIVE</span>
+        <span id="objective-val" class="hud-value" style="color:#ffd166">REPAIR CABLES</span>
+      </div>
+    </div>
+
+    <!-- ── Select screen ────────────────────────────────────────────────── -->
+    <div id="select-screen" class="overlay">
+
+      <!-- Scanlines decorative layer -->
+      <div class="scanlines" aria-hidden="true"></div>
+
+      <!-- Header: year badge + title + lore -->
+      <div class="select-header">
+        <div class="year-badge">◈ &nbsp; YEAR &nbsp; 3276 &nbsp; ◈</div>
+        <h1>Deep-sea Reparefish</h1>
+        <p id="lore-text" class="lore-p" aria-label="Lore"></p>
+      </div>
+
+      <!-- Body: two panels -->
+      <div class="select-body">
+
+        <!-- Left panel: fish skin + codename -->
+        <div class="select-panel">
+          <div class="section-label">YOUR FISH</div>
+          <div id="fish-picker">
+            <!-- populated by buildFishPicker() after assets load -->
+          </div>
+          <div class="name-row">
+            <label class="section-label" for="fish-name-input">CODENAME</label>
+            <input id="fish-name-input" type="text" maxlength="12"
+                   placeholder="Fish name…" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+
+        <div class="panel-sep"></div>
+
+        <!-- Right panel: difficulty + leaderboard -->
+        <div class="select-panel">
+          <div class="section-label">DIFFICULTY</div>
+          <div id="diff-picker">
+            <button class="diff-btn selected" data-diff="0">Easy</button>
+            <button class="diff-btn" data-diff="1">Normal</button>
+            <button class="diff-btn" data-diff="2">Hard</button>
+          </div>
+          <div class="section-label" style="margin-top:12px">BEST TIMES</div>
+          <div id="lb-preview"></div>
+        </div>
+
+      </div><!-- /select-body -->
+
+      <!-- Footer: hint + CTA -->
+      <div class="select-footer">
+        <div class="controls-hint">
+          <span>Move: WASD / Arrows &nbsp;·&nbsp; Sprint: Shift</span>
+          <span>Mama Fish: Space &nbsp;·&nbsp; P2 (VS): Arrows + Enter</span>
+        </div>
+        <div class="controls-hint-btn">
+          <button id="tutorial-btn">❓ &nbsp; HOW TO PLAY</button>
+          <button id="settings-btn">⚙ &nbsp; SETTINGS</button>
+          <button id="start-btn">▶ &nbsp; DIVE IN</button>
+          <button id="local-btn">⚔ &nbsp; LOCAL VS</button>
+          <button id="story-btn">📖 &nbsp; STORY MODE</button>
+        </div>
+      </div>
+
+    </div><!-- /select-screen -->
+
+    <!-- ── Game Over screen ──────────────────────────────────────────────── -->
+    <div id="gameover-screen" class="overlay hidden">
+      <div class="scanlines" aria-hidden="true"></div>
+      <h1 style="color:#ff3333;text-shadow:0 0 24px rgba(255,50,50,0.7)">GAME OVER</h1>
+      <p>The predators got you!</p>
+      <button id="gameover-btn">▶ TRY AGAIN</button>
+    </div>
+
+    <!-- ── Win screen ────────────────────────────────────────────────────── -->
+    <div id="win-screen" class="overlay hidden">
+      <div class="scanlines" aria-hidden="true"></div>
+      <h1>MISSION COMPLETE</h1>
+      <p id="win-time"></p>
+      <div id="leaderboard"></div>
+      <button id="restart-btn">▶ PLAY AGAIN</button>
+    </div>
+
+    <!-- ── Tutorial screen ───────────────────────────────────────────────── -->
+    <div id="tutorial-screen" class="overlay hidden">
+      <div class="scanlines" aria-hidden="true"></div>
+      <h1>TUTORIAL</h1>
+      <p class="tutorial-copy">
+        1) Swim close to broken cable nodes to repair them.<br />
+        2) Avoid predators and the saboteur fish in local mode (it can break repaired nodes).<br />
+        3) Use Shift (or Sprint touch button) once per run to burst forward.<br />
+        4) On Easy/Normal solo, use Space (or MAMA) once to freeze nearby enemies.<br />
+        5) Once all cables are repaired, hunt mode starts: you get an electric aura and must hunt all predators before the countdown ends (60s Easy, 40s Normal, 30s Hard)!<br />
+        6) DEPTH tracker shows your depth (-6000m to -7000m) in the HUD.<br />
+        7) Local VS mode: Player 2 uses Arrow Keys and Enter for sprint; use Match Setup and Local Server tabs to create/join and ready up.<br />
+        8) Story Mode: each level includes a start/end mission brief for a clear narrative arc.
+      </p>
+      <button id="tutorial-close-btn">▶ GOT IT</button>
+    </div>
+
+    <!-- ── Settings screen ───────────────────────────────────────────────── -->
+    <div id="settings-screen" class="overlay hidden">
+      <div class="scanlines" aria-hidden="true"></div>
+      <h1>SETTINGS</h1>
+      <div class="settings-panel">
+        <label><input id="setting-show-hud" type="checkbox" checked /> Show HUD</label>
+        <label><input id="setting-show-hud-name" type="checkbox" checked /> Show fish name in HUD</label>
+        <label><input id="setting-show-hud-depth" type="checkbox" checked /> Show depth in HUD</label>
+        <label><input id="setting-show-hud-objective" type="checkbox" checked /> Show objective in HUD</label>
+        <label><input id="setting-show-minimap" type="checkbox" checked /> Show minimap</label>
+        <label>
+          Fish size
+          <input id="setting-fish-scale" type="range" min="80" max="130" value="100" />
+        </label>
+        <label>
+          Animation intensity
+          <input id="setting-animation-intensity" type="range" min="0" max="150" value="100" />
+        </label>
+        <label>
+          Depth preset
+          <select id="setting-depth-preset">
+            <option value="-5000,800">Shallow (-5000m to -5800m)</option>
+            <option value="-6000,1000" selected>Standard (-6000m to -7000m)</option>
+            <option value="-7000,1200">Abyss (-7000m to -8200m)</option>
+          </select>
+        </label>
+      </div>
+      <p class="settings-credits">Credits: Ricky-lc, GabriPav, AntoMarl · Deep-sea Reparefish</p>
+      <button id="settings-close-btn">← BACK</button>
+    </div>
+
+    <!-- ── Story Level Select screen ────────────────────────────────────────── -->
+    <div id="story-level-screen" class="overlay hidden">
+      <div class="scanlines" aria-hidden="true"></div>
+      <h1>STORY MODE</h1>
+      <p style="font-size:0.78em;color:#5a8898;margin-bottom:8px">Three missions, one simple arc: power the cables, keep fish alive.</p>
+      <div id="story-levels-list">
+        <div class="story-level-card">
+          <button class="story-level-btn" data-level="0">
+            <span class="sl-title">Level 1 — The Shallows</span>
+            <span class="sl-depth">-6100m</span>
+            <span class="sl-desc">Repair 4 cables · 3 enemies · 60s hunt window</span>
+            <span class="sl-lore">Part 1/3: Shallow relay nodes flicker out near the reef. Dive in and restore power to the young-fish nurseries before the current dies.</span>
+          </button>
+        </div>
+        <div class="story-level-card">
+          <button class="story-level-btn" data-level="1">
+            <span class="sl-title">Level 2 — The Trenches</span>
+            <span class="sl-depth">-6500m</span>
+            <span class="sl-desc">Repair 8 cables · 7 enemies · 40s hunt window</span>
+            <span class="sl-lore">Part 2/3: The trench relays have gone dark and convoy routes are failing. Recharge the deep corridors so migrating schools can pass safely.</span>
+          </button>
+        </div>
+        <div class="story-level-card">
+          <button class="story-level-btn" data-level="2">
+            <span class="sl-title">Level 3 — The Abyss</span>
+            <span class="sl-depth">-6900m</span>
+            <span class="sl-desc">Repair 14 cables · 12 enemies · 30s hunt window</span>
+            <span class="sl-lore">Part 3/3: The core backbone has collapsed in the abyss. Repair the final circuit and restore power to the entire deep-sea network.</span>
+          </button>
+        </div>
+      </div>
+      <button id="story-level-back-btn" style="margin-top:16px">← BACK</button>
+    </div>
+
+    <!-- ── Local VS Lobby ───────────────────────────────────────────────────── -->
+    <div id="local-vs-screen" class="overlay hidden">
+      <div class="scanlines" aria-hidden="true"></div>
+      <h1>LOCAL VS</h1>
+      <p style="font-size:0.74em;color:#6f9eb0;margin:6px 0 10px">Same keyboard — P1: WASD + Shift &nbsp;·&nbsp; P2: Arrows + Enter</p>
+      <div id="local-vs-match-section">
+        <div class="local-vs-presets">
+          <button id="local-vs-preset-versus" class="local-vs-preset">Quick Versus</button>
+          <button id="local-vs-preset-coop" class="local-vs-preset">Quick Co-op</button>
+          <button id="local-vs-preset-sabotage" class="local-vs-preset">Quick Sabotage</button>
+        </div>
+        <div class="local-vs-grid">
+          <label>Mode
+            <select id="local-vs-mode">
+              <option value="versus" selected>Versus</option>
+              <option value="coop">Co-op Repair</option>
+              <option value="sabotage">Sabotage</option>
+            </select>
+          </label>
+          <label>Round
+            <select id="local-vs-time">
+              <option value="0">Unlimited</option>
+              <option value="60">60s</option>
+              <option value="90" selected>90s</option>
+              <option value="120">120s</option>
+            </select>
+          </label>
+          <label>Teams
+            <select id="local-vs-teams">
+              <option value="repair-vs-saboteur" selected>Repair vs Saboteur</option>
+              <option value="dual-repair">Dual Repair</option>
+              <option value="swap-each-round">Swap Each Round</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <p id="local-vs-status" class="local-vs-status">Pick a preset or customise, then press Start.</p>
+      <div class="local-vs-actions">
+        <button id="local-vs-start-btn">▶ &nbsp; START</button>
+        <button id="local-vs-close-btn">← BACK</button>
+      </div>
+    </div>
+
+  </div><!-- /game-wrapper -->
+
+  <script src="game.js"></script>
+</body>
+</html>

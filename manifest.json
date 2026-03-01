@@ -1,0 +1,29 @@
+{
+  "name": "Deep-sea Reparefish",
+  "short_name": "Reparefish",
+  "description": "Repair submerged cables in the deep ocean while evading predators. Three story levels, local multiplayer, and hunt phase.",
+  "start_url": "./",
+  "id": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000510",
+  "theme_color": "#00aaff",
+  "lang": "en",
+  "categories": ["games"],
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

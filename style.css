@@ -1,0 +1,713 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+#game-wrapper {
+  position: relative;
+  width: 960px;
+  height: 540px;
+  flex-shrink: 0;
+}
+
+#game-canvas {
+  display: block;
+  width: 960px;
+  height: 540px;
+  image-rendering: pixelated;
+}
+
+/* ── HUD ─────────────────────────────────────────────────────────────────── */
+#hud {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: flex;
+  gap: 28px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hud-block {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.hud-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #366680;
+  text-transform: uppercase;
+}
+
+.hud-value {
+  font-size: 15px;
+  font-weight: bold;
+  color: #00ccff;
+  text-shadow: 0 0 8px rgba(0, 180, 255, 0.55);
+}
+
+/* ── Base overlay ─────────────────────────────────────────────────────────── */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 5, 16, 0.93);
+  z-index: 20;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* Scanline decorative layer */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.09) 3px,
+    rgba(0, 0, 0, 0.09) 4px
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ensure content renders above scanlines */
+.select-header,
+.select-body,
+.select-footer,
+.overlay > h1,
+.overlay > p,
+.overlay > button,
+.overlay > div:not(.scanlines) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Animated title glow ─────────────────────────────────────────────────── */
+@keyframes title-glow {
+  0%,100% { text-shadow: 0 0 18px rgba(0,160,255,0.55), 0 0 40px rgba(0,130,255,0.25); }
+  50%     { text-shadow: 0 0 32px rgba(0,190,255,0.90), 0 0 70px rgba(0,160,255,0.45); }
+}
+
+.overlay h1 {
+  font-size: 2.1em;
+  letter-spacing: 0.22em;
+  color: #00aaff;
+  text-transform: uppercase;
+  animation: title-glow 2.8s ease-in-out infinite;
+  margin: 0;
+  line-height: 1;
+}
+
+.overlay p {
+  font-size: 0.85em;
+  color: #7aaabb;
+  text-align: center;
+  line-height: 1.65;
+  max-width: 500px;
+}
+
+.tutorial-copy {
+  max-width: 760px;
+  text-align: justify-all;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.8em;
+  color: #7aaabb;
+}
+
+.settings-panel input {
+  margin-right: 8px;
+}
+
+.settings-panel select {
+  margin-left: 8px;
+  background: rgba(0, 8, 24, 0.75);
+  border: 1px solid #1a4060;
+  color: #88ddaa;
+  font-family: inherit;
+}
+
+.settings-credits {
+  margin-top: 14px;
+}
+
+/* ── SELECT SCREEN ────────────────────────────────────────────────────────── */
+
+/* Header: year badge + title + lore */
+.select-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 18px 0 10px;
+  width: 100%;
+  border-bottom: 1px solid rgba(0, 160, 255, 0.12);
+}
+
+/* Year badge */
+.year-badge {
+  font-size: 0.68em;
+  letter-spacing: 0.38em;
+  color: #00ffcc;
+  text-transform: uppercase;
+  text-shadow: 0 0 14px rgba(0, 255, 200, 0.55);
+  border: 1px solid rgba(0, 255, 200, 0.28);
+  background: rgba(0, 255, 200, 0.04);
+  padding: 3px 18px;
+  display: inline-block;
+}
+
+/* Lore paragraph (typewriter target) */
+.lore-p {
+  font-size: 0.75em;
+  color: #5a8898;
+  letter-spacing: 0.04em;
+  text-align: left;
+  min-width: 800px;
+  line-height: 1.55;
+  min-height: 2.8em;    /* reserve space while typing */
+  padding: 0 16px;
+}
+
+/* Blinking cursor appended during typewriter animation */
+@keyframes cursor-blink {
+  0%,49% { opacity: 1; }
+  50%,100% { opacity: 0; }
+}
+
+.lore-cursor {
+  display: inline-block;
+  width: 0.55em;
+  color: #00ccff;
+  animation: cursor-blink 0.7s step-end infinite;
+  font-weight: bold;
+}
+
+/* Body: two-column panels */
+.select-body {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  flex: 1;
+  width: 100%;
+  max-width: 880px;
+  padding: 12px 20px 6px;
+}
+
+.select-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  flex: 1;
+  align-items: flex-start;
+  padding: 0 20px;
+}
+
+/* Vertical separator between panels */
+.panel-sep {
+  width: 1px;
+  align-self: stretch;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 160, 255, 0.2) 20%,
+    rgba(0, 160, 255, 0.2) 80%,
+    transparent 100%
+  );
+  flex-shrink: 0;
+}
+
+/* Footer: controls hint + DIVE IN */
+.select-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0 16px;
+  width: 100%;
+  max-height: 200px;
+  border-top: 1px solid rgba(0, 160, 255, 0.1);
+}
+
+/* ── Controls hint ───────────────────────────────────────────────────────── */
+.controls-hint {
+  font-size: 0.68em;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  color: #2a5060;
+  letter-spacing: 0.07em;
+  padding-bottom: 10px;
+  text-align: center;
+  gap: 2px;
+}
+/* ── Controls hint buttons ───────────────────────────────────────────────── */
+.controls-hint-btn {
+  font-size: 0.68em;
+  flex-direction: row;
+  color: #2a5060;
+  letter-spacing: 0.07em;
+  text-align: center;
+}
+
+.select-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Generic overlay buttons ─────────────────────────────────────────────── */
+.overlay button {
+  padding: 0.55em 2.2em;
+  background: transparent;
+  border: 1.5px solid #00aaff;
+  color: #00aaff;
+  font-family: inherit;
+  font-size: 0.9em;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.14s, box-shadow 0.14s;
+}
+
+.overlay button:hover,
+.overlay button:focus {
+  background: rgba(0, 160, 255, 0.13);
+  box-shadow: 0 0 20px rgba(0, 160, 255, 0.38);
+  outline: none;
+}
+
+/* ── Section labels ──────────────────────────────────────────────────────── */
+.section-label {
+  font-size: 0.63em;
+  letter-spacing: 0.2em;
+  color: #2a5066;
+  text-transform: uppercase;
+  display: block;
+}
+
+/* ── Fish picker ─────────────────────────────────────────────────────────── */
+#fish-picker {
+  display: flex;
+  gap: 10px;
+}
+
+.fish-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 5px 7px;
+  border: 1.5px solid #1a3a5a;
+  background: rgba(0, 20, 50, 0.3);
+  transition: border-color 0.13s, background 0.13s, box-shadow 0.13s;
+}
+
+.fish-opt.selected {
+  border-color: #00aaff;
+  background: rgba(0, 160, 255, 0.09);
+  box-shadow: 0 0 12px rgba(0, 160, 255, 0.22) inset;
+}
+
+.fish-opt:hover:not(.selected) {
+  border-color: rgba(0, 170, 255, 0.5);
+  background: rgba(0, 160, 255, 0.05);
+}
+
+.fish-opt span {
+  font-size: 0.6em;
+  color: #5a8a9a;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* PNG skin images in the fish picker */
+.fish-preview-img {
+  width: 70px;
+  height: 50px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* ── Fish name input row ─────────────────────────────────────────────────── */
+.name-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+#fish-name-input {
+  background: rgba(0, 8, 24, 0.75);
+  border: 1px solid #1a4060;
+  border-bottom: 1px solid rgba(0, 170, 255, 0.35);
+  color: #88ddaa;
+  font-family: inherit;
+  font-size: 0.9em;
+  padding: 0.35em 0.7em;
+  letter-spacing: 0.1em;
+  outline: none;
+  width: 200px;
+  transition: border-color 0.14s;
+}
+
+#fish-name-input:focus {
+  border-color: rgba(0, 200, 255, 0.55);
+  box-shadow: 0 2px 0 rgba(0, 200, 255, 0.25);
+}
+
+/* ── Difficulty picker ───────────────────────────────────────────────────── */
+#diff-picker {
+  display: flex;
+  gap: 8px;
+}
+
+.diff-btn {
+  padding: 0.38em 1.3em;
+  background: transparent;
+  border: 1.5px solid #1a4060;
+  color: #4a8090;
+  font-family: inherit;
+  font-size: 0.76em;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.13s, background 0.13s, color 0.13s;
+}
+
+.diff-btn.selected,
+.diff-btn:hover {
+  border-color: #00aaff;
+  color: #00aaff;
+  background: rgba(0, 160, 255, 0.1);
+}
+
+/* ── Leaderboard ─────────────────────────────────────────────────────────── */
+#leaderboard {
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+#lb-preview {
+  max-height: 100px;
+  overflow-y: auto;
+  width: 100%;
+}
+
+.lb-table {
+  border-collapse: collapse;
+  font-size: 0.7em;
+  color: #7aaabb;
+  letter-spacing: 0.04em;
+  width: 100%;
+}
+
+.lb-table th {
+  color: #2a5060;
+  font-size: 0.85em;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-bottom: 1px solid #1a3848;
+  text-transform: uppercase;
+}
+
+.lb-table td {
+  padding: 2px 8px;
+  text-align: center;
+}
+
+.lb-table tr:nth-child(1) td { color: #ffd040; }
+.lb-table tr:nth-child(2) td { color: #c0c0c0; }
+.lb-table tr:nth-child(3) td { color: #cd8430; }
+
+.lb-small { font-size: 0.62em; }
+
+/* ── Win time display ────────────────────────────────────────────────────── */
+#win-time {
+  color: #00ccff;
+  font-size: 0.95em;
+  letter-spacing: 0.1em;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ── Touch controls ──────────────────────────────────────────────────────── */
+#touch-controls {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+
+#touch-controls.active {
+  display: block;
+}
+
+.touch-zone {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+#touch-joystick {
+  left: 20px;
+  bottom: 20px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(0, 160, 255, 0.12);
+  border: 2px solid rgba(0, 160, 255, 0.25);
+}
+
+#touch-stick {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 180, 255, 0.35);
+  border: 2px solid rgba(0, 200, 255, 0.5);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.touch-btn {
+  position: absolute;
+  right: 20px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 160, 255, 0.3);
+  background: rgba(0, 100, 200, 0.15);
+  color: #00aaff;
+  font-family: 'Courier New', monospace;
+  font-size: 0.55em;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+#touch-sprint-btn {
+  bottom: 100px;
+}
+
+#touch-mama-btn {
+  bottom: 24px;
+}
+
+/* ── Local mode player labels ────────────────────────────────────────────── */
+.p2-label {
+  color: #ff4444;
+}
+
+/* ── Story Mode Level Select ─────────────────────────────────────────────── */
+#story-levels-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 600px;
+  margin-top: 8px;
+}
+
+.story-level-card {
+  width: 100%;
+}
+
+.story-level-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 12px 20px;
+  background: rgba(0,20,50,0.5);
+  border: 1.5px solid #1a4060;
+  color: #00aaff;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.13s, background 0.13s, box-shadow 0.13s;
+}
+
+.story-level-btn:hover, .story-level-btn:focus {
+  border-color: #00aaff;
+  background: rgba(0,160,255,0.1);
+  box-shadow: 0 0 16px rgba(0,160,255,0.3);
+  outline: none;
+}
+
+.sl-title {
+  font-size: 0.9em;
+  font-weight: bold;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #00ddff;
+}
+
+.sl-depth {
+  font-size: 0.7em;
+  color: #00ffcc;
+  letter-spacing: 0.1em;
+}
+
+.sl-desc {
+  font-size: 0.62em;
+  color: #4a8090;
+  letter-spacing: 0.05em;
+}
+
+.sl-lore {
+  margin-top: 2px;
+  font-size: 0.6em;
+  color: #7fa8b8;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+}
+
+/* ── Local VS Lobby ────────────────────────────────────────────────────────── */
+.local-vs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 720px;
+  margin-top: 10px;
+}
+
+.local-vs-presets {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.local-vs-preset {
+  padding: 0.42em 0.95em !important;
+  font-size: 0.66em !important;
+}
+
+.local-vs-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  color: #4a8090;
+  text-transform: uppercase;
+}
+
+.local-vs-grid select {
+  border: 1px solid #1a3a5a;
+  background: rgba(0, 10, 30, 0.8);
+  color: #8fc7df;
+  font-family: inherit;
+  font-size: 0.9em;
+  padding: 0.5em 0.7em;
+}
+
+.local-vs-status {
+  margin-top: 10px;
+  color: #66bbcc;
+  font-size: 0.66em;
+  letter-spacing: 0.08em;
+  min-height: 2.2em;
+}
+
+.local-vs-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── Story next level button ─────────────────────────────────────────────── */
+.story-next-btn {
+  margin-top: 8px;
+  padding: 0.55em 2em;
+  background: transparent;
+  border: 1.5px solid #00ffcc;
+  color: #00ffcc;
+  font-family: inherit;
+  font-size: 0.9em;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.14s, box-shadow 0.14s;
+}
+
+.story-next-btn:hover {
+  background: rgba(0,255,200,0.12);
+  box-shadow: 0 0 18px rgba(0,255,200,0.35);
+}
+
+@media (max-width: 900px), (max-height: 560px) {
+  #hud {
+    gap: 14px;
+    top: 8px;
+    left: 10px;
+    flex-wrap: wrap;
+    max-width: 85%;
+  }
+  .hud-value {
+    font-size: 12px;
+  }
+  #touch-joystick {
+    width: 100px;
+    height: 100px;
+    left: 12px;
+    bottom: 12px;
+  }
+  .touch-btn {
+    right: 12px;
+    width: 56px;
+    height: 56px;
+    font-size: 0.5em;
+  }
+  #touch-sprint-btn {
+    bottom: 84px;
+  }
+  #touch-mama-btn {
+    bottom: 18px;
+  }
+}
