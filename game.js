@@ -885,13 +885,17 @@
   }
 
   // Player 2 (saboteur) in local mode: Arrow Keys
+  function inputFlag(input, localKeyName, remoteKeyName) {
+    return !!(input[localKeyName] || input[remoteKeyName]);
+  }
+
   function movePlayer2() {
     if (!player2) return;
     var saboteurInput = isLanMode && lanSession ? (lanSession.remoteInput || {}) : keys;
-    var up    = !!saboteurInput['ArrowUp'] || !!saboteurInput.up;
-    var down  = !!saboteurInput['ArrowDown'] || !!saboteurInput.down;
-    var left  = !!saboteurInput['ArrowLeft'] || !!saboteurInput.left;
-    var right = !!saboteurInput['ArrowRight'] || !!saboteurInput.right;
+    var up    = inputFlag(saboteurInput, 'ArrowUp', 'up');
+    var down  = inputFlag(saboteurInput, 'ArrowDown', 'down');
+    var left  = inputFlag(saboteurInput, 'ArrowLeft', 'left');
+    var right = inputFlag(saboteurInput, 'ArrowRight', 'right');
 
     player2.vx += ((right ? 1 : 0) - (left  ? 1 : 0)) * ACCEL;
     player2.vy += ((down  ? 1 : 0) - (up    ? 1 : 0)) * ACCEL;
@@ -1277,7 +1281,8 @@
       var ds = depthScale(c.y);
       for (var b = 0; b < c.n; b++) {
         var ang = -Math.PI * 0.5 + ((c.n > 1 ? b / (c.n - 1) : 0.5) - 0.5) * 1.4;
-        var tx  = c.x + Math.cos(ang) * c.h * ds, ty = c.y + Math.sin(ang) * c.h * ds;
+        var tx  = c.x + Math.cos(ang) * c.h * ds;
+        var ty = c.y + Math.sin(ang) * c.h * ds;
         ctx.strokeStyle = 'hsla(' + c.hue + ',62%,38%,0.6)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tx, ty); ctx.stroke();
         ctx.fillStyle = 'hsla(' + c.hue + ',65%,50%,0.45)';
