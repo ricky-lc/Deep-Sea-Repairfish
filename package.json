@@ -7,5 +7,5 @@
     "start": "node server.js"
   },
   "keywords": ["game", "canvas", "deep-sea", "pwa"],
-  "license": "MIT"
+  "license": "BUSL-1.1"
 }

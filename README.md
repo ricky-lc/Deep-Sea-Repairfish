@@ -1,14 +1,14 @@
 # Deep-Sea Repairfish
 
-A browser-based deep-sea cable repair game. Swim through the dark ocean, fix broken cables and evade predators — solo, in story mode or local 2-player VS on the same keyboard.
+A browser-based deep-sea cable repair game. Swim through the dark ocean, fix broken cables and evade predators — solo, in expanded story mode, or in LAN multiplayer on the same Wi‑Fi.
 
 ## Play
 
-Open `index.html` in any modern browser. That's it — no install, no server, no build step.
+Open `index.html` in any modern browser for solo and story mode.
 
 ### Optional: serve over HTTP
 
-If you want PWA support or just prefer a local URL:
+For LAN multiplayer (host/join room), PWA support, or just a local URL:
 
 ```bash
 # Node.js (zero dependencies)
@@ -22,14 +22,18 @@ Then open `http://localhost:8000`.
 
 ## Controls
 
-| Action | Player 1 | Player 2 (Local VS) |
-|--------|----------|---------------------|
+| Action | Host (Repair Fish) | Joiner (Saboteur) |
+|--------|---------------------|-------------------|
 | Move | WASD / Arrows | Arrow Keys |
 | Sprint (once) | Shift | Enter |
-| Mama Fish (Easy/Normal solo) | Space | — |
+| Mama Fish (Easy/Normal solo only) | Space | — |
 
 Mobile: on-screen joystick + action buttons.
 
 ## Credits
 
 Ricky-lc · GabriPav · AntoMarl
+
+## License
+
+This project is source-available under **BUSL-1.1**. See `/LICENSE`.

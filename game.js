@@ -49,7 +49,9 @@
   var STORY_LEVELS = [
     { cables: 4,  enemies: 3,  huntMs: 60000, depthBase: -6100, depthRange: 800 },
     { cables: 8,  enemies: 7,  huntMs: 40000, depthBase: -6500, depthRange: 900 },
-    { cables: 14, enemies: 12, huntMs: 30000, depthBase: -6900, depthRange: 1000 }
+    { cables: 14, enemies: 12, huntMs: 30000, depthBase: -6900, depthRange: 1000 },
+    { cables: 18, enemies: 15, huntMs: 26000, depthBase: -7300, depthRange: 1100 },
+    { cables: 22, enemies: 19, huntMs: 22000, depthBase: -7700, depthRange: 1200 }
   ];
 
   // Canvas-fallback colours per skin slot [body, fin, eye]
@@ -59,9 +61,9 @@
     ['#0a4020', '#062812', '#44ff88']
   ];
 
-  var LORE_TEXT = 'Year 3276. Deep-sea fish have evolved to draw energy from the magnetic fields of submerged cables. ' +
-    'When the cables fail, so does all life below. Humans won\u2019t dive this deep\u2014so a repair-fish must. ' +
-    'That fish is you.';
+  var LORE_TEXT = 'Year 3276. Abyssal cities float in darkness when the cable lattice breaks. ' +
+    'Repairfish crews now guard five relay fronts: reefs, trenches, vents, rifts, and the abyssal crown. ' +
+    'Humans can no longer dive this deep. You are the final signal runner.';
 
   // ── Globals ──────────────────────────────────────────────────────────────────
   var canvas, ctx, lightCanvas, lightCtx;
@@ -107,8 +109,10 @@
   var storyLevel  = -1;
   var player2      = null;
   var sabotageCooldown = 0;
-  var localVsConfig = { mode: 'versus', roundTimeSec: 90, teams: 'repair-vs-saboteur' };
+  var localVsConfig = { roundTimeSec: 90 };
   var localRoundDurationMs = 90000;
+  var isLanMode = false;
+  var lanSession = null;
   var touchControlsEl = null;
   var touchMamaBtn    = null;
 
@@ -371,6 +375,8 @@
 
     document.getElementById('start-btn').addEventListener('click', function () {
       isLocalMode = false;
+      isLanMode = false;
+      lanSession = null;
       isStoryMode = false;
       storyLevel = -1;
       launchGame();
@@ -383,22 +389,24 @@
     document.getElementById('local-vs-close-btn').addEventListener('click', function () {
       closeLocalVsLobby();
     });
+    document.getElementById('local-vs-create-btn').addEventListener('click', function () {
+      createLanRoom();
+    });
+    document.getElementById('local-vs-join-btn').addEventListener('click', function () {
+      joinLanRoom();
+    });
     document.getElementById('local-vs-start-btn').addEventListener('click', function () {
       syncLocalVsConfigFromForm();
+      if (!lanSession || !lanSession.roomCode || !lanSession.token) {
+        localVsStatus('Create or join a LAN room before starting.', true);
+        return;
+      }
       isLocalMode = true;
+      isLanMode = true;
       isStoryMode = false;
       storyLevel = -1;
       closeLocalVsLobby();
       launchGame();
-    });
-    document.getElementById('local-vs-preset-versus').addEventListener('click', function () {
-      applyLocalVsPreset('versus', 90, 'repair-vs-saboteur', 'Quick Versus preset applied.');
-    });
-    document.getElementById('local-vs-preset-coop').addEventListener('click', function () {
-      applyLocalVsPreset('coop', 0, 'dual-repair', 'Quick Co-op preset applied.');
-    });
-    document.getElementById('local-vs-preset-sabotage').addEventListener('click', function () {
-      applyLocalVsPreset('sabotage', 120, 'swap-each-round', 'Quick Sabotage preset applied.');
     });
 
     document.getElementById('tutorial-btn').addEventListener('click', function () {
@@ -464,6 +472,8 @@
         isStoryMode = true;
         storyLevel = lvl;
         isLocalMode = false;
+        isLanMode = false;
+        lanSession = null;
         difficulty = clamp(lvl, 0, DIFF_CFG.length - 1);
         setSelectedDifficultyBtn(difficulty);
         depthBase = STORY_LEVELS[lvl].depthBase;
@@ -492,11 +502,7 @@
   }
 
   function syncLocalVsConfigFromForm() {
-    var modeEl = document.getElementById('local-vs-mode');
     var timeEl = document.getElementById('local-vs-time');
-    var teamEl = document.getElementById('local-vs-teams');
-    if (modeEl) localVsConfig.mode = modeEl.value || 'versus';
-    if (teamEl) localVsConfig.teams = teamEl.value || 'repair-vs-saboteur';
     if (timeEl) {
       var sec = parseInt(timeEl.value, 10);
       localVsConfig.roundTimeSec = isNaN(sec) ? 0 : sec;
@@ -504,21 +510,217 @@
     localRoundDurationMs = localVsConfig.roundTimeSec > 0 ? localVsConfig.roundTimeSec * 1000 : 0;
   }
 
-  function applyLocalVsPreset(mode, roundSec, teams, statusMsg) {
-    var modeEl = document.getElementById('local-vs-mode');
-    var timeEl = document.getElementById('local-vs-time');
-    var teamEl = document.getElementById('local-vs-teams');
-    if (modeEl) modeEl.value = mode;
-    if (timeEl) timeEl.value = String(roundSec);
-    if (teamEl) teamEl.value = teams;
+  function getLobbyRoomCode() {
+    var roomEl = document.getElementById('local-vs-room-code');
+    var roomCode = roomEl ? String(roomEl.value || '') : '';
+    roomCode = roomCode.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
+    if (roomEl) roomEl.value = roomCode;
+    return roomCode;
+  }
+
+  function setLobbyRoomCode(roomCode) {
+    var roomEl = document.getElementById('local-vs-room-code');
+    if (roomEl) roomEl.value = roomCode || '';
+  }
+
+  function createLanRoom() {
     syncLocalVsConfigFromForm();
-    localVsStatus(statusMsg, false);
+    localVsStatus('Creating LAN room...', false);
+    fetch('/api/lan/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ roundTimeSec: localVsConfig.roundTimeSec })
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Server returned ' + res.status);
+      return res.json();
+    }).then(function (data) {
+      localVsConfig.roundTimeSec = data.roundTimeSec || localVsConfig.roundTimeSec;
+      localRoundDurationMs = localVsConfig.roundTimeSec > 0 ? localVsConfig.roundTimeSec * 1000 : 0;
+      lanSession = {
+        roomCode: data.roomCode,
+        token: data.token,
+        role: data.role,
+        ready: false,
+        remoteInput: {},
+        snapshot: null,
+        pollInFlight: false,
+        pushInFlight: false,
+        snapshotInFlight: false,
+        lastPollAt: 0,
+        lastPushAt: 0,
+        lastSnapshotAt: 0
+      };
+      setLobbyRoomCode(data.roomCode || '');
+      var timeEl = document.getElementById('local-vs-time');
+      if (timeEl) timeEl.value = String(localVsConfig.roundTimeSec);
+      localVsStatus('Room created: ' + data.roomCode + '. Share code with saboteur.', false);
+    }).catch(function (err) {
+      localVsStatus('Failed to create room: ' + err.message, true);
+    });
+  }
+
+  function joinLanRoom() {
+    var roomCode = getLobbyRoomCode();
+    if (!roomCode) {
+      localVsStatus('Enter a room code first.', true);
+      return;
+    }
+    localVsStatus('Joining room ' + roomCode + '...', false);
+    fetch('/api/lan/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ roomCode: roomCode })
+    }).then(function (res) {
+      if (!res.ok) throw new Error('Server returned ' + res.status);
+      return res.json();
+    }).then(function (data) {
+      localVsConfig.roundTimeSec = data.roundTimeSec || localVsConfig.roundTimeSec;
+      localRoundDurationMs = localVsConfig.roundTimeSec > 0 ? localVsConfig.roundTimeSec * 1000 : 0;
+      lanSession = {
+        roomCode: data.roomCode,
+        token: data.token,
+        role: data.role,
+        ready: true,
+        remoteInput: {},
+        snapshot: null,
+        pollInFlight: false,
+        pushInFlight: false,
+        snapshotInFlight: false,
+        lastPollAt: 0,
+        lastPushAt: 0,
+        lastSnapshotAt: 0
+      };
+      setLobbyRoomCode(data.roomCode || roomCode);
+      var timeEl = document.getElementById('local-vs-time');
+      if (timeEl) timeEl.value = String(localVsConfig.roundTimeSec);
+      localVsStatus('Joined room ' + data.roomCode + '. You control the saboteur fish.', false);
+    }).catch(function (err) {
+      localVsStatus('Failed to join room: ' + err.message, true);
+    });
+  }
+
+  function sendLanInput(ts) {
+    if (!isLanMode || !lanSession || lanSession.pushInFlight) return;
+    if (ts - lanSession.lastPushAt < 70) return;
+    var input = lanSession.role === 'join'
+      ? { up: !!keys.ArrowUp, down: !!keys.ArrowDown, left: !!keys.ArrowLeft, right: !!keys.ArrowRight, sprint: !!(keys.Enter || keys.NumpadEnter) }
+      : { up: false, down: false, left: false, right: false, sprint: false };
+    lanSession.pushInFlight = true;
+    lanSession.lastPushAt = ts;
+    fetch('/api/lan/input', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ roomCode: lanSession.roomCode, token: lanSession.token, input: input })
+    }).catch(function () {
+      localVsStatus('LAN link unstable: input sync delayed.', true);
+    }).finally(function () {
+      if (lanSession) lanSession.pushInFlight = false;
+    });
+  }
+
+  function buildLanSnapshot(ts) {
+    return {
+      gameState: gameState,
+      fixedCount: fixedCount,
+      numCables: numCables,
+      hp: hp,
+      elapsedMs: elapsedMs,
+      huntPhase: huntPhase,
+      huntRemainingMs: huntDeadlineTs > 0 ? Math.max(0, huntDeadlineTs - ts) : 0,
+      player: { x: player.x, y: player.y, angle: player.angle },
+      player2: player2 ? { x: player2.x, y: player2.y, angle: player2.angle } : { x: player.x, y: player.y, angle: player.angle },
+      enemies: enemies.map(function (e) {
+        return { x: e.x, y: e.y, angle: e.angle, size: e.size, chasing: !!e.chasing, frozen: !!e.frozen };
+      }),
+      cables: cables.map(function (c) {
+        return { x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2, cpx: c.cpx, cpy: c.cpy, mx: c.mx, my: c.my, fixed: !!c.fixed };
+      })
+    };
+  }
+
+  function sendLanSnapshot(ts) {
+    if (!isLanMode || !lanSession || lanSession.role !== 'host' || lanSession.snapshotInFlight) return;
+    if (ts - lanSession.lastSnapshotAt < 95) return;
+    lanSession.snapshotInFlight = true;
+    lanSession.lastSnapshotAt = ts;
+    fetch('/api/lan/snapshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ roomCode: lanSession.roomCode, token: lanSession.token, snapshot: buildLanSnapshot(ts) })
+    }).catch(function () {
+      localVsStatus('LAN link unstable: snapshot sync delayed.', true);
+    }).finally(function () {
+      if (lanSession) lanSession.snapshotInFlight = false;
+    });
+  }
+
+  function pollLanState(ts) {
+    if (!isLanMode || !lanSession || lanSession.pollInFlight) return;
+    if (ts - lanSession.lastPollAt < 120) return;
+    lanSession.pollInFlight = true;
+    lanSession.lastPollAt = ts;
+    var query = '?roomCode=' + encodeURIComponent(lanSession.roomCode) + '&token=' + encodeURIComponent(lanSession.token);
+    fetch('/api/lan/poll' + query, { credentials: 'same-origin' })
+      .then(function (res) {
+        if (!res.ok) throw new Error('Server returned ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (!lanSession) return;
+        lanSession.ready = !!data.ready;
+        lanSession.remoteInput = (lanSession.role === 'host') ? (data.joinInput || {}) : (data.hostInput || {});
+        if (lanSession.role === 'join' && data.snapshot) lanSession.snapshot = data.snapshot;
+      })
+      .catch(function () {
+        localVsStatus('LAN link lost. Verify both devices are on the same Wi-Fi.', true);
+      })
+      .finally(function () {
+        if (lanSession) lanSession.pollInFlight = false;
+      });
+  }
+
+  function applyLanSnapshotToJoiner(ts) {
+    if (!isLanMode || !lanSession || lanSession.role !== 'join') return;
+    var s = lanSession.snapshot;
+    if (!s || !s.player) return;
+    player.x = s.player.x; player.y = s.player.y; player.angle = s.player.angle;
+    player.vx = 0; player.vy = 0;
+    if (!player2) player2 = { x: s.player2.x, y: s.player2.y, vx: 0, vy: 0, angle: s.player2.angle, hp: 999 };
+    player2.x = s.player2.x; player2.y = s.player2.y; player2.angle = s.player2.angle;
+    hp = s.hp;
+    fixedCount = s.fixedCount;
+    numCables = s.numCables;
+    elapsedMs = s.elapsedMs;
+    huntPhase = !!s.huntPhase;
+    huntDeadlineTs = huntPhase ? ts + (s.huntRemainingMs || 0) : 0;
+    if (s.gameState === STATE_WIN && gameState !== STATE_WIN) {
+      gameState = STATE_WIN;
+      showWinScreenLocal('REPAIR FISH WINS!', 'Host completed the mission.');
+    } else if (s.gameState === STATE_GAMEOVER && gameState !== STATE_GAMEOVER) {
+      gameState = STATE_GAMEOVER;
+      showGameOverLocal('SABOTEUR WINS!', 'Host was overwhelmed.');
+    }
+    enemies = (s.enemies || []).map(function (e) {
+      return {
+        x: e.x, y: e.y, vx: 0, vy: 0, angle: e.angle, size: e.size,
+        homeX: e.x, homeY: e.y, chasing: !!e.chasing, frozen: !!e.frozen
+      };
+    });
+    cables = (s.cables || []).map(function (c) {
+      return {
+        x1: c.x1, y1: c.y1, x2: c.x2, y2: c.y2, cpx: c.cpx, cpy: c.cpy, mx: c.mx, my: c.my, fixed: !!c.fixed
+      };
+    });
   }
 
   function openLocalVsLobby() {
     syncLocalVsConfigFromForm();
     document.getElementById('local-vs-screen').classList.remove('hidden');
-    localVsStatus('Pick a preset or customise, then press Start.', false);
+    localVsStatus('Create or join a room. Start when both players are ready.', false);
   }
 
   function closeLocalVsLobby() {
@@ -528,6 +730,8 @@
   function goToSelect() {
     gameState = STATE_SELECT;
     isLocalMode = false;
+    isLanMode = false;
+    lanSession = null;
     isStoryMode = false;
     storyLevel = -1;
     document.getElementById('select-screen').classList.remove('hidden');
@@ -581,48 +785,61 @@
     lastTs = ts;
 
     if (gameState === STATE_PLAY || gameState === STATE_LOCAL) {
+      if (isLanMode) pollLanState(ts);
       elapsedMs = ts - gameStartTs;
-      movePlayer();
-      if (isLocalMode && player2) movePlayer2();
-      moveMamaFish(ts);
-      moveEnemies(ts);
-      tickParticles(dt);
-      checkRepair();
-      checkEnemyHit(ts);
-      if (isLocalMode) {
-        checkLocalCollision(ts);
-        checkSabotage(ts);
-      }
-      slideCamera();
-      updateHUD();
-
-      if (gameState === STATE_LOCAL) {
-        // Repair wins if all cables fixed
-        if (fixedCount >= numCables) {
-          gameState = STATE_WIN;
-          showWinScreenLocal('REPAIR FISH WINS!', 'All cables repaired!');
-        } else if (localRoundDurationMs > 0 && elapsedMs >= localRoundDurationMs) {
-          gameState = STATE_WIN;
-          showWinScreenLocal('TIME UP', 'Round ended · repaired cables: ' + fixedCount + '/' + numCables);
+      if (isLanMode && lanSession && lanSession.role === 'join') {
+        applyLanSnapshotToJoiner(ts);
+        sendLanInput(ts);
+        slideCamera();
+        updateHUD();
+      } else {
+        movePlayer();
+        if (isLocalMode && player2) movePlayer2();
+        moveMamaFish(ts);
+        moveEnemies(ts);
+        tickParticles(dt);
+        checkRepair();
+        checkEnemyHit(ts);
+        if (isLocalMode) {
+          checkLocalCollision(ts);
+          checkSabotage(ts);
         }
-      } else if (fixedCount >= numCables && !huntPhase) {
-        // Enter hunt phase: electric aura, kill all predators
-        huntPhase = true;
-        huntDeadlineTs = ts + getHuntLimitMs();
-        mamaFishActive = 0; // remove mama fish
-        hitCooldown = 0;
-        // Hide mama HUD block during hunt phase
-        var mamaBlock2 = document.getElementById('hud-mama-block');
-        if (mamaBlock2) mamaBlock2.style.display = 'none';
-        setTouchControlsVisibility();
-      } else if (huntPhase && enemies.length === 0) {
-        gameState = STATE_WIN;
-        showWinScreen();
-      } else if (huntPhase && ts >= huntDeadlineTs) {
-        showHuntTimeout();
+        slideCamera();
+        updateHUD();
+        if (isLanMode) {
+          sendLanInput(ts);
+          sendLanSnapshot(ts);
+        }
+
+        if (gameState === STATE_LOCAL) {
+          // Repair wins if all cables fixed
+          if (fixedCount >= numCables) {
+            gameState = STATE_WIN;
+            showWinScreenLocal('REPAIR FISH WINS!', 'All cables repaired!');
+          } else if (localRoundDurationMs > 0 && elapsedMs >= localRoundDurationMs) {
+            gameState = STATE_WIN;
+            showWinScreenLocal('TIME UP', 'Round ended · repaired cables: ' + fixedCount + '/' + numCables);
+          }
+        } else if (fixedCount >= numCables && !huntPhase) {
+          // Enter hunt phase: electric aura, kill all predators
+          huntPhase = true;
+          huntDeadlineTs = ts + getHuntLimitMs();
+          mamaFishActive = 0; // remove mama fish
+          hitCooldown = 0;
+          // Hide mama HUD block during hunt phase
+          var mamaBlock2 = document.getElementById('hud-mama-block');
+          if (mamaBlock2) mamaBlock2.style.display = 'none';
+          setTouchControlsVisibility();
+        } else if (huntPhase && enemies.length === 0) {
+          gameState = STATE_WIN;
+          showWinScreen();
+        } else if (huntPhase && ts >= huntDeadlineTs) {
+          showHuntTimeout();
+        }
       }
     } else {
       moveEnemies(ts);
+      if (isLanMode) pollLanState(ts);
     }
 
     render(ts);
@@ -631,6 +848,7 @@
 
   // ── Physics ───────────────────────────────────────────────────────────────────
   function movePlayer() {
+    if (isLanMode && lanSession && lanSession.role === 'join') return;
     var now = performance.now();
     var isSprinting = now < sprintActive;
     var spdCap = isSprinting ? MAX_SPD * SPRINT_MULTIPLIER : MAX_SPD;
@@ -669,10 +887,11 @@
   // Player 2 (saboteur) in local mode: Arrow Keys
   function movePlayer2() {
     if (!player2) return;
-    var up    = !!keys['ArrowUp'];
-    var down  = !!keys['ArrowDown'];
-    var left  = !!keys['ArrowLeft'];
-    var right = !!keys['ArrowRight'];
+    var saboteurInput = isLanMode && lanSession ? (lanSession.remoteInput || {}) : keys;
+    var up    = !!saboteurInput['ArrowUp'] || !!saboteurInput.up;
+    var down  = !!saboteurInput['ArrowDown'] || !!saboteurInput.down;
+    var left  = !!saboteurInput['ArrowLeft'] || !!saboteurInput.left;
+    var right = !!saboteurInput['ArrowRight'] || !!saboteurInput.right;
 
     player2.vx += ((right ? 1 : 0) - (left  ? 1 : 0)) * ACCEL;
     player2.vy += ((down  ? 1 : 0) - (up    ? 1 : 0)) * ACCEL;
@@ -962,8 +1181,7 @@
         ov.style.color = '#ff6666';
       } else {
         if (isLocalMode) {
-          if (localVsConfig.mode === 'coop') ov.textContent = 'CO-OP REPAIR';
-          else if (localVsConfig.mode === 'sabotage') ov.textContent = 'SABOTAGE ROUND';
+          if (isLanMode && lanSession && lanSession.role === 'join') ov.textContent = 'SABOTAGE CABLE NETWORK';
           else ov.textContent = 'REPAIR + EVADE SABOTEUR';
         }
         else if (isStoryMode) ov.textContent = 'STORY MISSION ' + (storyLevel + 1);
@@ -1027,6 +1245,12 @@
     }
     ctx.restore();
 
+    var depthFog = ctx.createLinearGradient(0, 0, 0, VIEW_H);
+    depthFog.addColorStop(0, 'rgba(5,20,36,0.12)');
+    depthFog.addColorStop(1, 'rgba(1,6,14,0.42)');
+    ctx.fillStyle = depthFog;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
     drawLighting(ts);
     if (showMinimap) drawMinimap();
     if ((gameState === STATE_PLAY || gameState === STATE_LOCAL) && nearCable) drawProximityHint();
@@ -1037,7 +1261,9 @@
     for (var i = 0; i < deco.rocks.length; i++) {
       var r = deco.rocks[i];
       if (!inView(r.x, r.y, r.rx + 4)) continue;
+      var ds = depthScale(r.y);
       ctx.save(); ctx.translate(r.x, r.y); ctx.rotate(r.rot);
+      ctx.scale(ds, ds);
       ctx.fillStyle = 'rgb(' + r.v + ',' + (r.v + 5) + ',' + (r.v + 14) + ')';
       ctx.beginPath(); ctx.ellipse(0, 0, r.rx, r.ry, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
@@ -1048,9 +1274,10 @@
     for (var i = 0; i < deco.corals.length; i++) {
       var c = deco.corals[i];
       if (!inView(c.x, c.y, c.h + 8)) continue;
+      var ds = depthScale(c.y);
       for (var b = 0; b < c.n; b++) {
         var ang = -Math.PI * 0.5 + ((c.n > 1 ? b / (c.n - 1) : 0.5) - 0.5) * 1.4;
-        var tx  = c.x + Math.cos(ang) * c.h, ty = c.y + Math.sin(ang) * c.h;
+        var tx  = c.x + Math.cos(ang) * c.h * ds, ty = c.y + Math.sin(ang) * c.h * ds;
         ctx.strokeStyle = 'hsla(' + c.hue + ',62%,38%,0.6)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(tx, ty); ctx.stroke();
         ctx.fillStyle = 'hsla(' + c.hue + ',65%,50%,0.45)';
@@ -1140,7 +1367,12 @@
     for (var i = 0; i < enemies.length; i++) {
       var e = enemies[i];
       if (!inView(e.x, e.y, e.size * 2)) continue;
-      ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.angle);
+      var ds = depthScale(e.y);
+      ctx.save(); ctx.translate(e.x, e.y + 6 + (1 - ds) * 8);
+      ctx.fillStyle = 'rgba(0,0,0,0.22)';
+      ctx.beginPath(); ctx.ellipse(0, 0, e.size * 0.72 * ds, e.size * 0.24 * ds, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.angle); ctx.scale(ds, ds);
       drawEnemyFish(e.size, e.chasing, ts, i);
       // Ice crystal overlay for frozen enemies
       if (e.frozen) {
@@ -1225,11 +1457,17 @@
     if (inv && Math.floor(ts / 80) % 2 === 0) return;
     var now = performance.now();
     var isSprinting = now < sprintActive;
+    var ds = depthScale(player.y);
 
+    ctx.save();
+    ctx.translate(player.x, player.y + 7 + (1 - ds) * 10);
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 26 * ds, 9 * ds, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
     ctx.save();
     ctx.translate(player.x, player.y);
     ctx.rotate(player.angle);
-    ctx.scale(playerScale, playerScale);
+    ctx.scale(playerScale * ds, playerScale * ds);
 
     // Electric aura during hunt phase
     if (huntPhase) {
@@ -1294,9 +1532,16 @@
   // Saboteur fish (player 2 in local mode): same visual style as enemies
   function drawSaboteurFish(ts) {
     if (!player2) return;
+    var ds = depthScale(player2.y);
+    ctx.save();
+    ctx.translate(player2.x, player2.y + 6 + (1 - ds) * 9);
+    ctx.fillStyle = 'rgba(0,0,0,0.24)';
+    ctx.beginPath(); ctx.ellipse(0, 0, 20 * ds, 7 * ds, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
     ctx.save();
     ctx.translate(player2.x, player2.y);
     ctx.rotate(player2.angle);
+    ctx.scale(ds, ds);
     drawEnemyFish(SABOTEUR_SIZE, true, ts, SABOTEUR_FRAME_OFFSET);
     ctx.restore();
   }
@@ -1583,6 +1828,10 @@
   }
 
   function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+  function depthScale(y) {
+    return 0.8 + (clamp(y, 0, WORLD_H) / WORLD_H) * 0.38;
+  }
 
   function calculateDepth(y) {
     return depthBase - Math.round((y / WORLD_H) * depthRange);
