@@ -608,7 +608,7 @@ html, body {
 /* ── Local VS Lobby ────────────────────────────────────────────────────────── */
 .local-vs-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 10px;
   width: 100%;
   max-width: 720px;
@@ -638,7 +638,8 @@ html, body {
   text-transform: uppercase;
 }
 
-.local-vs-grid select {
+.local-vs-grid select,
+.local-vs-grid input {
   border: 1px solid #1a3a5a;
   background: rgba(0, 10, 30, 0.8);
   color: #8fc7df;

@@ -6,7 +6,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'" />
   <meta name="referrer" content="no-referrer" />
   <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(), camera=()" />
-  <meta name="description" content="Repair submerged cables in the deep ocean while evading predators. Story mode, local multiplayer, hunt phase." />
+  <meta name="description" content="Repair submerged cables in the deep ocean while evading predators. Story mode, LAN multiplayer, hunt phase." />
   <meta name="theme-color" content="#00aaff" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -111,13 +111,13 @@
       <div class="select-footer">
         <div class="controls-hint">
           <span>Move: WASD / Arrows &nbsp;·&nbsp; Sprint: Shift</span>
-          <span>Mama Fish: Space &nbsp;·&nbsp; P2 (VS): Arrows + Enter</span>
+            <span>Mama Fish: Space &nbsp;·&nbsp; LAN Saboteur controls: Arrows + Enter</span>
         </div>
         <div class="controls-hint-btn">
           <button id="tutorial-btn">❓ &nbsp; HOW TO PLAY</button>
           <button id="settings-btn">⚙ &nbsp; SETTINGS</button>
           <button id="start-btn">▶ &nbsp; DIVE IN</button>
-          <button id="local-btn">⚔ &nbsp; LOCAL VS</button>
+          <button id="local-btn">⚔ &nbsp; LAN MULTIPLAYER</button>
           <button id="story-btn">📖 &nbsp; STORY MODE</button>
         </div>
       </div>
@@ -147,13 +147,13 @@
       <h1>TUTORIAL</h1>
       <p class="tutorial-copy">
         1) Swim close to broken cable nodes to repair them.<br />
-        2) Avoid predators and the saboteur fish in local mode (it can break repaired nodes).<br />
+        2) Avoid predators and the saboteur fish in LAN mode (it can break repaired nodes).<br />
         3) Use Shift (or Sprint touch button) once per run to burst forward.<br />
         4) On Easy/Normal solo, use Space (or MAMA) once to freeze nearby enemies.<br />
         5) Once all cables are repaired, hunt mode starts: you get an electric aura and must hunt all predators before the countdown ends (60s Easy, 40s Normal, 30s Hard)!<br />
         6) DEPTH tracker shows your depth (-6000m to -7000m) in the HUD.<br />
-        7) Local VS mode: Player 2 uses Arrow Keys and Enter for sprint; use Match Setup and Local Server tabs to create/join and ready up.<br />
-        8) Story Mode: each level includes a start/end mission brief for a clear narrative arc.
+        7) LAN mode: host creates a room code, saboteur joins from another device on the same Wi-Fi and uses Arrow Keys + Enter.<br />
+        8) Story Mode now includes five missions and expanded lore briefs.
       </p>
       <button id="tutorial-close-btn">▶ GOT IT</button>
     </div>
@@ -193,14 +193,14 @@
     <div id="story-level-screen" class="overlay hidden">
       <div class="scanlines" aria-hidden="true"></div>
       <h1>STORY MODE</h1>
-      <p style="font-size:0.78em;color:#5a8898;margin-bottom:8px">Three missions, one simple arc: power the cables, keep fish alive.</p>
+      <p style="font-size:0.78em;color:#5a8898;margin-bottom:8px">Five missions: from reef relays to abyssal core recovery.</p>
       <div id="story-levels-list">
         <div class="story-level-card">
           <button class="story-level-btn" data-level="0">
             <span class="sl-title">Level 1 — The Shallows</span>
             <span class="sl-depth">-6100m</span>
             <span class="sl-desc">Repair 4 cables · 3 enemies · 60s hunt window</span>
-            <span class="sl-lore">Part 1/3: Shallow relay nodes flicker out near the reef. Dive in and restore power to the young-fish nurseries before the current dies.</span>
+            <span class="sl-lore">Part 1/5: Reef relays flicker out near the nurseries. Stabilize the first chain before the current collapses.</span>
           </button>
         </div>
         <div class="story-level-card">
@@ -208,7 +208,7 @@
             <span class="sl-title">Level 2 — The Trenches</span>
             <span class="sl-depth">-6500m</span>
             <span class="sl-desc">Repair 8 cables · 7 enemies · 40s hunt window</span>
-            <span class="sl-lore">Part 2/3: The trench relays have gone dark and convoy routes are failing. Recharge the deep corridors so migrating schools can pass safely.</span>
+            <span class="sl-lore">Part 2/5: Trench relays fail and convoy routes drift blind. Restore corridor power for migration season.</span>
           </button>
         </div>
         <div class="story-level-card">
@@ -216,7 +216,23 @@
             <span class="sl-title">Level 3 — The Abyss</span>
             <span class="sl-depth">-6900m</span>
             <span class="sl-desc">Repair 14 cables · 12 enemies · 30s hunt window</span>
-            <span class="sl-lore">Part 3/3: The core backbone has collapsed in the abyss. Repair the final circuit and restore power to the entire deep-sea network.</span>
+            <span class="sl-lore">Part 3/5: A thermal vent swarm scorches armored lines. Repair the vent perimeter before predators surge in.</span>
+          </button>
+        </div>
+        <div class="story-level-card">
+          <button class="story-level-btn" data-level="3">
+            <span class="sl-title">Level 4 — Riftfall</span>
+            <span class="sl-depth">-7300m</span>
+            <span class="sl-desc">Repair 18 cables · 15 enemies · 26s hunt window</span>
+            <span class="sl-lore">Part 4/5: A tectonic rift split the backbone. Thread repairs through collapsing shelves while the swarm closes.</span>
+          </button>
+        </div>
+        <div class="story-level-card">
+          <button class="story-level-btn" data-level="4">
+            <span class="sl-title">Level 5 — Crown of the Abyss</span>
+            <span class="sl-depth">-7700m</span>
+            <span class="sl-desc">Repair 22 cables · 19 enemies · 22s hunt window</span>
+            <span class="sl-lore">Part 5/5: Final mission. Rebuild the abyssal crown relay and reignite power for every settlement below.</span>
           </button>
         </div>
       </div>
@@ -226,42 +242,27 @@
     <!-- ── Local VS Lobby ───────────────────────────────────────────────────── -->
     <div id="local-vs-screen" class="overlay hidden">
       <div class="scanlines" aria-hidden="true"></div>
-      <h1>LOCAL VS</h1>
-      <p style="font-size:0.74em;color:#6f9eb0;margin:6px 0 10px">Same keyboard — P1: WASD + Shift &nbsp;·&nbsp; P2: Arrows + Enter</p>
-      <div id="local-vs-match-section">
-        <div class="local-vs-presets">
-          <button id="local-vs-preset-versus" class="local-vs-preset">Quick Versus</button>
-          <button id="local-vs-preset-coop" class="local-vs-preset">Quick Co-op</button>
-          <button id="local-vs-preset-sabotage" class="local-vs-preset">Quick Sabotage</button>
-        </div>
-        <div class="local-vs-grid">
-          <label>Mode
-            <select id="local-vs-mode">
-              <option value="versus" selected>Versus</option>
-              <option value="coop">Co-op Repair</option>
-              <option value="sabotage">Sabotage</option>
-            </select>
-          </label>
-          <label>Round
-            <select id="local-vs-time">
-              <option value="0">Unlimited</option>
-              <option value="60">60s</option>
-              <option value="90" selected>90s</option>
-              <option value="120">120s</option>
-            </select>
-          </label>
-          <label>Teams
-            <select id="local-vs-teams">
-              <option value="repair-vs-saboteur" selected>Repair vs Saboteur</option>
-              <option value="dual-repair">Dual Repair</option>
-              <option value="swap-each-round">Swap Each Round</option>
-            </select>
-          </label>
-        </div>
+      <h1>LAN MULTIPLAYER</h1>
+      <p style="font-size:0.74em;color:#6f9eb0;margin:6px 0 10px">Host and saboteur must be on the same Wi-Fi.</p>
+      <div class="local-vs-grid">
+        <label>Room Code
+          <input id="local-vs-room-code" type="text" maxlength="8" placeholder="ABC123" autocomplete="off" />
+        </label>
+        <label>Round
+          <select id="local-vs-time">
+            <option value="0">Unlimited</option>
+            <option value="60">60s</option>
+            <option value="90" selected>90s</option>
+            <option value="120">120s</option>
+            <option value="150">150s</option>
+          </select>
+        </label>
       </div>
-      <p id="local-vs-status" class="local-vs-status">Pick a preset or customise, then press Start.</p>
+      <p id="local-vs-status" class="local-vs-status">Create or join a room. Host controls repair fish, joiner controls saboteur.</p>
       <div class="local-vs-actions">
-        <button id="local-vs-start-btn">▶ &nbsp; START</button>
+        <button id="local-vs-create-btn">◎ &nbsp; CREATE ROOM</button>
+        <button id="local-vs-join-btn">⇄ &nbsp; JOIN ROOM</button>
+        <button id="local-vs-start-btn">▶ &nbsp; START MATCH</button>
         <button id="local-vs-close-btn">← BACK</button>
       </div>
     </div>
